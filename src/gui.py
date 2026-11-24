@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 from algorithms.expectiminimax import chance_outcomes, find_best_move
+from algorithms import alphabeta
 from board import (
     COLS,
     COMPUTER,
@@ -22,15 +23,22 @@ BACKGROUND = "#f3f6f8"
 BOARD_COLOR = "#1769aa"
 PLAYER_COLORS = {HUMAN: "#e53935", COMPUTER: "#2eaa5f"}
 
+# algorithms the player can choose from. To add Minimax (no pruning) just add a name here
+# and a branch for it in start_computer_turn().
+ALPHA_BETA = "Minimax with alpha-beta"
+EXPECTED = "Expected Minimax"
+ALGORITHMS = [ALPHA_BETA, EXPECTED]
+
 
 class ConnectFourGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Connect Four - Expected Minimax")
+        self.root.title("Connect Four")
         self.root.configure(bg=BACKGROUND)
         self.root.resizable(False, False)
         self.board = create_board()
         self.depth = 2
+        self.current_algorithm = ALPHA_BETA   # fixed when the game starts
         self.print_plies = 2
         self.game_over = True
         self.computer_turn = False
@@ -55,6 +63,9 @@ class ConnectFourGUI:
 
         options = tk.Frame(root, padx=8, pady=2, bg=BACKGROUND)
         options.pack()
+        self.algorithm = tk.StringVar(value=ALPHA_BETA)
+        tk.Label(options, text="Algorithm:", bg=BACKGROUND).pack(side=tk.LEFT)
+        tk.OptionMenu(options, self.algorithm, *ALGORITHMS).pack(side=tk.LEFT, padx=(4, 10))
         self.computer_first = tk.BooleanVar(value=False)
         tk.Checkbutton(options, text="Computer starts", variable=self.computer_first,
                        bg=BACKGROUND).pack(side=tk.LEFT, padx=6)
@@ -117,12 +128,13 @@ class ConnectFourGUI:
     # ------------------------------------------------------------------ moves
     def _apply_random_landing(self, chosen_column, player):
         # The chosen column is only the INTENDED column: the disc may slip to a neighbour.
-        outcomes = chance_outcomes(self.board, chosen_column)
-        columns = [column for column, _ in outcomes]
-        weights = [probability for _, probability in outcomes]
-        if self.no_random.get():
-            actual_column = chosen_column      # testing mode: disc always lands where chosen
+        # the disc only slips with Expected Minimax; the other algorithms drop it where chosen
+        if self.no_random.get() or self.current_algorithm != EXPECTED:
+            actual_column = chosen_column
         else:
+            outcomes = chance_outcomes(self.board, chosen_column)
+            columns = [column for column, _ in outcomes]
+            weights = [probability for _, probability in outcomes]
             actual_column = random.choices(columns, weights=weights, k=1)[0]
         self.board = drop_disc(self.board, actual_column, player)
         for row in range(ROWS):
@@ -160,15 +172,20 @@ class ConnectFourGUI:
         plies = self.print_plies
         turn = self.turn_number
         save = self.save_tree_var.get()
+        algorithm = self.current_algorithm
 
         def think():
-            result = find_best_move(board, depth, COMPUTER)
+            if algorithm == ALPHA_BETA:
+                search, show, store = alphabeta.find_best_move, alphabeta.print_search_result, alphabeta.save_tree
+            else:
+                search, show, store = find_best_move, print_search_result, save_tree
+            result = search(board, depth, COMPUTER)
             if game_id != self.game_id:
                 return
-            print_search_result(result, depth, plies)
+            show(result, depth, plies)
             if save:
                 path = f"tree_turn_{turn}.txt"
-                save_tree(result, depth, path)
+                store(result, depth, path)
                 print(f"Full tree saved to {path}")
             self.pending_result = (game_id, result)
 
@@ -228,6 +245,7 @@ class ConnectFourGUI:
                                  "K must be a positive whole number and tree levels a whole number >= 0.")
             return
 
+        self.current_algorithm = self.algorithm.get()
         self.game_id += 1          # invalidates any search still running from the previous game
         self.depth = depth
         self.print_plies = plies if plies > 0 else None
