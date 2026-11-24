@@ -8,13 +8,12 @@ from board import (
     COLS,
     COMPUTER,
     HUMAN,
-    ROWS,
     board_is_full,
     count_connected_fours,
     drop_disc,
-    four_cell_windows,
     valid_moves,
 )
+from heuristic import evaluate_board
 
 WIN_SCORE = 100_000   # value of a finished board, per connected-four of difference
 
@@ -27,39 +26,6 @@ class AlphaBetaResult:
         self.nodes = nodes      # number of nodes expanded
         self.elapsed_seconds = elapsed_seconds
         self.lines = lines      # list of (level, text) used to print the tree
-
-
-# ------------------------------------------------------------------
-# Heuristic
-# ------------------------------------------------------------------
-def heuristic(board):
-    # bigger = better for the computer, smaller = better for the human
-    # 1. difference in connected-fours already made
-    # 2. open groups of 4 (no opponent disc) that have 3 or 2 of our discs
-    # 3. small bonus for the centre column
-    score = 100 * (count_connected_fours(board, COMPUTER) -
-                   count_connected_fours(board, HUMAN))
-
-    for w in four_cell_windows(board):
-        c = w.count(COMPUTER)
-        h = w.count(HUMAN)
-        e = w.count(0)
-        if h == 0 and c == 3 and e == 1:
-            score += 5
-        elif h == 0 and c == 2 and e == 2:
-            score += 2
-        if c == 0 and h == 3 and e == 1:
-            score -= 5
-        elif c == 0 and h == 2 and e == 2:
-            score -= 2
-
-    mid = COLS // 2
-    for r in range(ROWS):
-        if board[r][mid] == COMPUTER:
-            score += 3
-        elif board[r][mid] == HUMAN:
-            score -= 3
-    return score
 
 
 # ------------------------------------------------------------------
@@ -77,12 +43,13 @@ def final_score(board):
 def alphabeta(board, depth, alpha, beta, maximizing, lines, level):
     """depth = levels left, level = how deep we are (for printing)."""
     global nodes_expanded
-    nodes_expanded += 1
 
     if board_is_full(board):
         return final_score(board)
     if depth == 0:
-        return heuristic(board)
+        return evaluate_board(board)
+
+    nodes_expanded += 1
 
     moves = valid_moves(board)
     player = COMPUTER if maximizing else HUMAN
@@ -119,7 +86,7 @@ def alphabeta(board, depth, alpha, beta, maximizing, lines, level):
 def find_best_move(board, depth, player=COMPUTER):
     """Same call as the other algorithms: returns a result with .move"""
     global nodes_expanded
-    nodes_expanded = 0
+    nodes_expanded = 1    # the root
     lines = []
     start = perf_counter()
     alpha = float('-inf')
