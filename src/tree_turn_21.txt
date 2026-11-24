@@ -1,6 +1,0 @@
----- Minimax tree (K=4) ----
-MAX root (computer to move) -> best value=400000, chosen col=5
-    MIN node (C played col 5) value=400000
-        MAX node (H played col 5) value=400000
-            Leaf (full board) final score = 400000
-Nodes expanded: 2  |  time: 0.0002 s
