@@ -5,6 +5,7 @@ from tkinter import messagebox
 
 from algorithms.expectiminimax import chance_outcomes, find_best_move
 from algorithms import alphabeta
+from algorithms import minimax
 from board import (
     COLS,
     COMPUTER,
@@ -23,11 +24,11 @@ BACKGROUND = "#f3f6f8"
 BOARD_COLOR = "#1769aa"
 PLAYER_COLORS = {HUMAN: "#e53935", COMPUTER: "#2eaa5f"}
 
-# algorithms the player can choose from. To add Minimax (no pruning) just add a name here
-# and a branch for it in start_computer_turn().
+# algorithms the player can choose from
+MINIMAX = "Minimax without alpha-beta"
 ALPHA_BETA = "Minimax with alpha-beta"
 EXPECTED = "Expected Minimax"
-ALGORITHMS = [ALPHA_BETA, EXPECTED]
+ALGORITHMS = [MINIMAX, ALPHA_BETA, EXPECTED]
 
 
 class ConnectFourGUI:
@@ -175,7 +176,9 @@ class ConnectFourGUI:
         algorithm = self.current_algorithm
 
         def think():
-            if algorithm == ALPHA_BETA:
+            if algorithm == MINIMAX:
+                search, show, store = minimax.find_best_move, minimax.print_search_result, minimax.save_tree
+            elif algorithm == ALPHA_BETA:
                 search, show, store = alphabeta.find_best_move, alphabeta.print_search_result, alphabeta.save_tree
             else:
                 search, show, store = find_best_move, print_search_result, save_tree
@@ -266,4 +269,4 @@ class ConnectFourGUI:
 def main():
     root = tk.Tk()
     ConnectFourGUI(root)
-    root.mainloop()
+    root.mainloop()

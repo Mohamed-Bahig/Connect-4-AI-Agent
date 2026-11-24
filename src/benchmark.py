@@ -1,4 +1,4 @@
-# Measure Expected Minimax time and node counts at different K values.
+# Measure time and node counts of the 3 algorithms at different K values.
 # Usage:  python benchmark.py            (K = 1..4)
 #         python benchmark.py 1 2 3      (chosen K values)
 
@@ -6,7 +6,7 @@ import csv
 import sys
 from time import perf_counter
 
-from algorithms.expectiminimax import find_best_move
+from algorithms import alphabeta, expectiminimax, minimax
 from board import COMPUTER, HUMAN, create_board, drop_disc
 
 
@@ -29,20 +29,31 @@ def sample_positions():
 
 
 def run_benchmarks(depths=(1, 2, 3, 4), csv_path="benchmark_results.csv"):
-    header = ["position", "K", "seconds", "decision_nodes", "chance_nodes", "leaf_nodes",
-              "best_column", "expected_value"]
+    header = ["algorithm", "position", "K", "seconds", "nodes_expanded", "best_column", "value"]
     rows = []
     print(",".join(header))
     for name, board in sample_positions().items():
         for depth in depths:
-            start = perf_counter()
+            # same board and same K for all 3 algorithms
             # build_tree=False -> only the algorithm is timed, not the tree printing structures
-            result = find_best_move(board, depth, COMPUTER, build_tree=False)
-            elapsed = perf_counter() - start
-            row = [name, depth, f"{elapsed:.4f}", result.nodes_expanded, result.chance_nodes,
-                   result.leaf_nodes, result.move, f"{result.value:.2f}"]
-            rows.append(row)
-            print(",".join(str(x) for x in row), flush=True)
+            start = perf_counter()
+            result = minimax.find_best_move(board, depth, COMPUTER, build_tree=False)
+            rows.append(["minimax", name, depth, perf_counter() - start, result.nodes_expanded,
+                         result.move, result.value])
+
+            start = perf_counter()
+            result = alphabeta.find_best_move(board, depth, COMPUTER)
+            rows.append(["alphabeta", name, depth, perf_counter() - start, result.nodes,
+                         result.move, result.value])
+
+            start = perf_counter()
+            result = expectiminimax.find_best_move(board, depth, COMPUTER, build_tree=False)
+            rows.append(["expectiminimax", name, depth, perf_counter() - start, result.nodes_expanded,
+                         result.move, round(result.value, 2)])
+
+            for row in rows[-3:]:
+                row[3] = f"{row[3]:.4f}"
+                print(",".join(str(x) for x in row), flush=True)
     with open(csv_path, "w", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(header)
